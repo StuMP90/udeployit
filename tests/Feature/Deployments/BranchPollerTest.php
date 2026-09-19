@@ -46,7 +46,6 @@ class BranchPollerTest extends TestCase
     protected function tearDown(): void
     {
         File::deleteDirectory($this->originPath);
-        File::deleteDirectory(storage_path('app/repos'));
 
         parent::tearDown();
     }

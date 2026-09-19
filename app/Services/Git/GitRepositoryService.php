@@ -22,7 +22,7 @@ class GitRepositoryService
 
     public function mirrorPath(Project $project): string
     {
-        return storage_path("app/repos/{$project->id}");
+        return rtrim(config('udeployit.repos_path'), '/')."/{$project->id}";
     }
 
     public function ensureMirror(Project $project): void
