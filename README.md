@@ -1,21 +1,35 @@
 # uDeployIt
 
-A small-scale, self-hosted deployment tool for individuals and small teams — watches GitHub repos, deploys via SFTP/SSH to your own servers, and runs pre/post-deploy scripts. Not a SaaS.
+A small-scale, self-hosted deployment tool for individuals and small teams. Watches your GitHub repositories, deploys via SFTP/SSH to your own servers (LAN or internet-reachable), and runs pre/post-deploy shell scripts. Not a SaaS — there's no multi-tenancy, no billing, and it's meant to run on infrastructure you already control.
 
 Built with Laravel 13, PHP 8.3, PostgreSQL, and Livewire.
+
+## What it does
+
+- Connects to GitHub over SSH (a global default deploy key, with an optional per-project override) and tracks every branch's latest commit.
+- Deploys are **incremental by default**: it diffs the last-deployed commit against the target commit and uploads only what changed, falling back to a full upload when there's no prior deploy or the history isn't reachable (e.g. a force-push).
+- Runs an optional before/after SSH script per project, with a timeout and a configurable abort-or-continue-on-failure policy.
+- Polls GitHub for branch updates **only while a dashboard is open**, at an admin-configurable interval — no webhooks, no cron. If a branch you've marked for auto-deploy updates, it deploys automatically.
+- Username/password login only — no email-based login, no self-registration, no self-service password reset (an admin creates and resets accounts). Two roles: admin and staff.
+
+See `LICENSE.md` for the license terms — this affects what you're allowed to do with the code.
 
 ## Local setup
 
 ```bash
 composer install
-npm install && npm run build
-cp .env.example .env   # already done for local dev
+npm install && npm run build      # or `npm run dev` while actively working on frontend assets
+cp .env.example .env              # already done for local dev — see below for the expected values
 php artisan key:generate
 php artisan migrate
-php artisan make:admin   # registration is disabled — this is the only way to create the first user
+php artisan make:admin            # registration is disabled — this is the only way to create the first user
 ```
 
-Serve `public/` with Nginx + PHP-FPM. `storage/` and `bootstrap/cache/` must be writable by the PHP-FPM user.
+Local dev expects PostgreSQL reachable with the credentials in `.env` (`DB_DATABASE=udeployit`, `DB_USERNAME=postgres`, `DB_PASSWORD=postgres` by default), and `APP_URL` pointing at whatever host your Nginx vhost serves.
+
+## Serving it
+
+Point Nginx (or any PHP-FPM-fronting web server) at `public/` as the docroot. `storage/` and `bootstrap/cache/` must be writable by whichever user PHP-FPM runs as (commonly `www-data`) — if you're also running `artisan`/tests as a different local user, both need write access to those directories (a shared group with `g+w`, or equivalent, is the usual fix).
 
 Deployments run as queued jobs, so a worker must always be running:
 
@@ -23,7 +37,17 @@ Deployments run as queued jobs, so a worker must always be running:
 php artisan queue:work --timeout=3700
 ```
 
-The `--timeout` matters: deploy scripts are capped at 3600s each, `DeployProjectJob` itself times out at 3660s, so the worker's `--timeout` must stay above that (3700s here). `DB_QUEUE_RETRY_AFTER` in `.env` is already set to 3800s for the same reason — Laravel's default (90s) would let the database queue driver treat a still-running deploy as crashed and hand it to another worker, running it twice.
+The `--timeout` matters: deploy scripts are capped at 3600s each, `DeployProjectJob` itself times out at 3660s, so the worker's `--timeout` must stay above that (3700s here). `DB_QUEUE_RETRY_AFTER` in `.env` is already set to 3800s for the same reason — Laravel's default (90s) would let the database queue driver treat a still-running deploy as crashed and hand it to another worker, running it twice. Run the worker under a process supervisor (systemd, supervisord) in production so it restarts if it dies.
+
+## Testing
+
+```bash
+php artisan test        # Pest — uses an in-memory SQLite DB, safe to run anytime
+./vendor/bin/pint       # code style
+./vendor/bin/phpstan analyse   # static analysis (Larastan)
+```
+
+Git-backed features (`GitRepositoryService`, `GitDiffService`, the branch poller) are tested against real local `git` repositories created in a temp directory — no network access or real GitHub credentials needed. The SSH/SFTP deploy path (`SftpDeployerService`) is tested with mocks; it hasn't been exercised against a real SSH server, so it's worth a manual end-to-end test against an actual target server before relying on it.
 
 ## License
 
