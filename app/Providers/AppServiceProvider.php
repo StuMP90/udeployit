@@ -59,5 +59,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(fn (User $user) => $user->isAdmin() ? true : null);
 
         Gate::define('manage-users', fn (User $user) => false);
+        Gate::define('manage-infrastructure', fn (User $user) => false);
     }
 }

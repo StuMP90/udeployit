@@ -25,6 +25,27 @@
                             {{ __('Users') }}
                         </x-ui.navlist-item>
                     @endcan
+
+                    @can('manage-infrastructure')
+                        <div class="mt-4 mb-1 px-3 text-xs font-semibold uppercase text-zinc-400 dark:text-zinc-500">
+                            {{ __('Infrastructure') }}
+                        </div>
+
+                        <x-ui.navlist-item :href="route('github-credentials.index')" :current="request()->routeIs('github-credentials.*')" wire:navigate>
+                            <flux:icon.key variant="micro" />
+                            {{ __('GitHub credentials') }}
+                        </x-ui.navlist-item>
+
+                        <x-ui.navlist-item :href="route('servers.index')" :current="request()->routeIs('servers.*')" wire:navigate>
+                            <flux:icon.server variant="micro" />
+                            {{ __('Servers') }}
+                        </x-ui.navlist-item>
+
+                        <x-ui.navlist-item :href="route('templates.index')" :current="request()->routeIs('templates.*')" wire:navigate>
+                            <flux:icon.squares-2x2 variant="micro" />
+                            {{ __('Templates') }}
+                        </x-ui.navlist-item>
+                    @endcan
                 </nav>
 
                 <div class="border-t border-zinc-200 p-3 dark:border-zinc-700">
