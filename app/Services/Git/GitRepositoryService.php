@@ -61,7 +61,7 @@ class GitRepositoryService
 
             [$name, $sha, $committedAt] = explode("\t", $line);
 
-            $branches[] = new RemoteBranch($name, $sha, $committedAt !== '' ? Carbon::parse($committedAt) : null);
+            $branches[] = new RemoteBranch($name, $sha, $committedAt !== '' ? Carbon::parse($committedAt)->utc() : null);
         }
 
         return $branches;

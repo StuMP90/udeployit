@@ -58,6 +58,7 @@ class GitRepositoryServiceTest extends TestCase
         $main = $project->projectBranches()->where('branch_name', 'main')->firstOrFail();
         $this->assertSame($main->latest_sha, $main->created_snapshot_sha);
         $this->assertNotNull($main->latest_committed_at);
+        $this->assertFalse($main->latest_committed_at->isFuture(), 'commit time must be stored as UTC, not a local time read as UTC');
     }
 
     public function test_a_second_sync_keeps_the_original_creation_snapshot(): void

@@ -322,23 +322,18 @@ new #[Title('Project')] class extends Component {
 
         <div class="space-y-3">
             @forelse ($project->projectServers as $projectServer)
-                <div wire:key="project-server-{{ $projectServer->id }}" class="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                    <div class="flex items-end gap-3">
-                        <div class="w-36 shrink-0 pb-2 text-sm font-medium text-zinc-900 dark:text-white">
-                            {{ $projectServer->server->name }}
+                <div wire:key="project-server-{{ $projectServer->id }}" class="space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-zinc-900 dark:text-white">{{ $projectServer->server->name }}</p>
+                            @if ($projectServer->last_deployed_sha)
+                                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                    {{ __('Last deployed :time (:sha)', ['time' => $projectServer->last_deployed_at?->diffForHumans(), 'sha' => substr($projectServer->last_deployed_sha, 0, 10)]) }}
+                                </p>
+                            @else
+                                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Never deployed') }}</p>
+                            @endif
                         </div>
-
-                        <x-ui.input wire:model="branch.{{ $projectServer->id }}" :label="__('Branch')" type="text" class="w-40" />
-                        <x-ui.input wire:model="deploymentPath.{{ $projectServer->id }}" :label="__('Deployment path')" type="text" class="flex-1" />
-
-                        <label class="flex items-center gap-2 pb-2 text-sm text-zinc-700 dark:text-zinc-300">
-                            <input type="checkbox" wire:model="autoDeploy.{{ $projectServer->id }}" class="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800" />
-                            {{ __('Auto-deploy') }}
-                        </label>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <flux:button type="button" wire:click="updateServer({{ $projectServer->id }})">{{ __('Save') }}</flux:button>
 
                         <button
                             type="button"
@@ -348,6 +343,20 @@ new #[Title('Project')] class extends Component {
                         >
                             {{ __('Remove') }}
                         </button>
+                    </div>
+
+                    <div class="flex items-end gap-4">
+                        <x-ui.input wire:model="branch.{{ $projectServer->id }}" :label="__('Branch')" type="text" class="w-40 shrink-0" />
+                        <x-ui.input wire:model="deploymentPath.{{ $projectServer->id }}" :label="__('Deployment path')" type="text" class="min-w-0 flex-1" />
+
+                        <label class="flex h-[38px] shrink-0 items-center gap-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">
+                            <input type="checkbox" wire:model="autoDeploy.{{ $projectServer->id }}" class="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800" />
+                            {{ __('Auto-deploy') }}
+                        </label>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <flux:button type="button" wire:click="updateServer({{ $projectServer->id }})">{{ __('Save') }}</flux:button>
 
                         @if ($projectServer->branch)
                             @if ($projectServer->last_deployed_sha)
@@ -379,12 +388,6 @@ new #[Title('Project')] class extends Component {
                             @endif
                         @endif
                     </div>
-
-                    @if ($projectServer->last_deployed_sha)
-                        <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                            {{ __('Last deployed :time (:sha)', ['time' => $projectServer->last_deployed_at?->diffForHumans(), 'sha' => substr($projectServer->last_deployed_sha, 0, 10)]) }}
-                        </p>
-                    @endif
                 </div>
             @empty
                 <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No servers attached yet.') }}</p>
@@ -392,18 +395,18 @@ new #[Title('Project')] class extends Component {
         </div>
 
         @if ($this->availableServers->isNotEmpty())
-            <div class="mt-6 flex items-end gap-3 border-t border-zinc-200 pt-6 dark:border-zinc-700">
-                <x-ui.select wire:model="newServerId" name="newServerId" :label="__('Add a server')" class="w-44">
+            <div class="mt-6 flex items-end gap-4 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-600">
+                <x-ui.select wire:model="newServerId" name="newServerId" :label="__('Add a server')" class="w-44 shrink-0">
                     <option value="">{{ __('Choose a server') }}</option>
                     @foreach ($this->availableServers as $server)
                         <option value="{{ $server->id }}">{{ $server->name }}</option>
                     @endforeach
                 </x-ui.select>
 
-                <x-ui.input wire:model="newBranch" name="newBranch" :label="__('Branch')" type="text" class="w-40" />
-                <x-ui.input wire:model="newDeploymentPath" name="newDeploymentPath" :label="__('Deployment path')" type="text" class="flex-1" />
+                <x-ui.input wire:model="newBranch" name="newBranch" :label="__('Branch')" type="text" class="w-40 shrink-0" />
+                <x-ui.input wire:model="newDeploymentPath" name="newDeploymentPath" :label="__('Deployment path')" type="text" class="min-w-0 flex-1" />
 
-                <label class="flex items-center gap-2 pb-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <label class="flex h-[38px] shrink-0 items-center gap-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">
                     <input type="checkbox" wire:model="newAutoDeploy" class="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800" />
                     {{ __('Auto-deploy') }}
                 </label>
@@ -427,18 +430,18 @@ new #[Title('Project')] class extends Component {
             {{ __("It won't have a login shell's environment (no sourced .bashrc/.profile) unless your command sources it explicitly.") }}
         </div>
 
-        <div class="space-y-8">
+        <div class="space-y-6">
             @foreach (\App\Enums\DeploymentScriptType::cases() as $scriptType)
-                <div>
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
                     <x-ui.heading size="sm">{{ $scriptType->label() }}</x-ui.heading>
 
-                    <div class="mt-3 space-y-4">
+                    <div class="mt-4 space-y-4">
                         <x-ui.textarea wire:model="scriptCommand.{{ $scriptType->value }}" :label="__('Command')" rows="4" placeholder="cd /var/www/app && npm run build" />
 
                         <div class="flex items-end gap-4">
-                            <x-ui.input wire:model="scriptTimeout.{{ $scriptType->value }}" :label="__('Timeout (seconds)')" type="number" min="1" max="3600" class="w-40" />
+                            <x-ui.input wire:model="scriptTimeout.{{ $scriptType->value }}" :label="__('Timeout (seconds)')" type="number" min="1" max="3600" class="w-40 shrink-0" />
 
-                            <x-ui.select wire:model="scriptOnFailure.{{ $scriptType->value }}" :label="__('If it fails')" class="w-56">
+                            <x-ui.select wire:model="scriptOnFailure.{{ $scriptType->value }}" :label="__('If it fails')" class="w-64 shrink-0">
                                 @foreach (\App\Enums\ScriptFailureAction::cases() as $failureAction)
                                     <option value="{{ $failureAction->value }}">{{ $failureAction->label() }}</option>
                                 @endforeach
@@ -451,7 +454,7 @@ new #[Title('Project')] class extends Component {
                                     type="button"
                                     wire:click="removeScript('{{ $scriptType->value }}')"
                                     wire:confirm="{{ __('Remove this script?') }}"
-                                    class="pb-2 text-sm text-red-600 hover:underline dark:text-red-400"
+                                    class="ml-auto pb-2 text-sm text-red-600 hover:underline dark:text-red-400"
                                 >
                                     {{ __('Remove') }}
                                 </button>

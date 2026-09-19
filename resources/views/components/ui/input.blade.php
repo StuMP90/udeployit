@@ -10,7 +10,7 @@ $inputName = $name ?? $attributes->whereStartsWith('wire:model')->first();
 $errorKey = $name ?? (is_string($inputName) ? $inputName : null);
 @endphp
 
-<div x-data="{ show: false }" class="w-full">
+<div x-data="{ show: false }" class="{{ $attributes->get('class') ?: 'w-full' }}">
     @if ($label)
         <label @if ($name) for="{{ $name }}" @endif class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {{ $label }}
@@ -21,7 +21,7 @@ $errorKey = $name ?? (is_string($inputName) ? $inputName : null);
         <input
             @if ($name) id="{{ $name }}" name="{{ $name }}" @endif
             @if ($viewable) :type="show ? 'text' : '{{ $type }}'" @else type="{{ $type }}" @endif
-            {{ $attributes->except(['label', 'viewable'])->merge([
+            {{ $attributes->except(['label', 'viewable', 'class'])->merge([
                 'class' => 'block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white',
             ]) }}
         />
