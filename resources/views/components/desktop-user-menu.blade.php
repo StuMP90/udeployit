@@ -8,7 +8,7 @@
         <flux:icon.chevron-up-down variant="micro" class="text-zinc-400" />
     </button>
 
-    <div class="w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+    <div popover class="w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
         <div class="flex items-center gap-2 px-2 py-1.5">
             <x-ui.avatar :initials="auth()->user()->initials()" />
             <div class="min-w-0 flex-1">

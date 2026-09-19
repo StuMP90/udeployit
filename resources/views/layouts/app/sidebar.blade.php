@@ -18,6 +18,13 @@
                         <flux:icon.home variant="micro" />
                         {{ __('Dashboard') }}
                     </x-ui.navlist-item>
+
+                    @can('manage-users')
+                        <x-ui.navlist-item :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
+                            <flux:icon.users variant="micro" />
+                            {{ __('Users') }}
+                        </x-ui.navlist-item>
+                    @endcan
                 </nav>
 
                 <div class="border-t border-zinc-200 p-3 dark:border-zinc-700">

@@ -36,7 +36,7 @@ class MakeAdminCommand extends Command
             ],
             [
                 ...$this->profileRules(),
-                'username' => ['required', 'string', 'max:255', 'unique:users,username'],
+                'username' => $this->usernameRules(),
                 'password' => $this->passwordRules(),
             ],
         );
