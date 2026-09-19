@@ -50,6 +50,11 @@
                             <flux:icon.squares-2x2 variant="micro" />
                             {{ __('Templates') }}
                         </x-ui.navlist-item>
+
+                        <x-ui.navlist-item :href="route('polling.edit')" :current="request()->routeIs('polling.*')" wire:navigate>
+                            <flux:icon.arrow-path variant="micro" />
+                            {{ __('Polling') }}
+                        </x-ui.navlist-item>
                     @endcan
                 </nav>
 

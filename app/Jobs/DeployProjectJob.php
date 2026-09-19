@@ -5,10 +5,12 @@ namespace App\Jobs;
 use App\Enums\DeploymentScriptType;
 use App\Enums\DeploymentStatus;
 use App\Enums\DeploymentType;
+use App\Enums\NotificationType;
 use App\Enums\ScriptFailureAction;
 use App\Exceptions\DeploymentAbortedException;
 use App\Models\Deployment;
 use App\Models\DeploymentScript;
+use App\Models\Notification;
 use App\Services\Git\GitDiffService;
 use App\Services\Ssh\SftpDeployerService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -82,12 +84,26 @@ class DeployProjectJob implements ShouldQueue
 
             $deployment->update(['status' => DeploymentStatus::Success, 'finished_at' => now()]);
             $deployment->log('finish', 'Deployment succeeded.');
+
+            $this->notify($deployment, NotificationType::DeploymentSuccess, "Deployed \"{$project->name}\" to \"{$server->name}\".");
         } catch (Throwable $e) {
             $deployment->update(['status' => DeploymentStatus::Failed, 'finished_at' => now()]);
             $deployment->log('finish', 'Deployment failed: '.$e->getMessage(), 'error');
+
+            $this->notify($deployment, NotificationType::DeploymentFailure, "Deployment of \"{$deployment->project->name}\" to \"{$deployment->projectServer->server->name}\" failed: {$e->getMessage()}");
         } finally {
             $plan?->cleanup();
         }
+    }
+
+    private function notify(Deployment $deployment, NotificationType $type, string $message): void
+    {
+        Notification::create([
+            'type' => $type,
+            'project_id' => $deployment->project_id,
+            'deployment_id' => $deployment->id,
+            'message' => $message,
+        ]);
     }
 
     /**

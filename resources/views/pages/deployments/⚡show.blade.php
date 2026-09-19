@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeploymentStatus;
 use App\Models\Deployment;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -11,9 +12,19 @@ new #[Title('Deployment')] class extends Component {
     {
         $this->deployment = $deployment->load(['project', 'projectServer.server', 'triggeredBy', 'logs']);
     }
+
+    public function refresh(): void
+    {
+        $this->deployment = $this->deployment->fresh(['project', 'projectServer.server', 'triggeredBy', 'logs']);
+    }
+
+    public function isFinished(): bool
+    {
+        return in_array($this->deployment->status, [DeploymentStatus::Success, DeploymentStatus::Failed], true);
+    }
 }; ?>
 
-<div class="max-w-3xl space-y-6">
+<div @if (! $this->isFinished()) wire:poll.2s="refresh" @endif class="max-w-3xl space-y-6">
     <div>
         <x-ui.link href="{{ route('projects.show', $deployment->project) }}" wire:navigate>&larr; {{ $deployment->project->name }}</x-ui.link>
 
@@ -42,5 +53,9 @@ new #[Title('Deployment')] class extends Component {
         @empty
             <p class="text-zinc-500">{{ __('No log output yet.') }}</p>
         @endforelse
+
+        @if (! $this->isFinished())
+            <p class="mt-2 text-zinc-500">{{ __('Deploying…') }}</p>
+        @endif
     </div>
 </div>

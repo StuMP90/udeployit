@@ -14,4 +14,6 @@ Route::middleware(['auth', 'can:manage-infrastructure'])->group(function () {
     Route::livewire('templates', 'pages::templates.index')->name('templates.index');
     Route::livewire('templates/create', 'pages::templates.create')->name('templates.create');
     Route::livewire('templates/{template}/edit', 'pages::templates.edit')->name('templates.edit');
+
+    Route::livewire('polling', 'pages::polling.edit')->name('polling.edit');
 });

@@ -1,15 +1,13 @@
 <?php
 
 use App\Enums\DeploymentScriptType;
-use App\Enums\DeploymentStatus;
 use App\Enums\ScriptFailureAction;
 use App\Exceptions\GitRepositoryException;
-use App\Jobs\DeployProjectJob;
-use App\Models\Deployment;
 use App\Models\GithubCredential;
 use App\Models\Project;
 use App\Models\ProjectTemplate;
 use App\Models\Server;
+use App\Services\Deployment\DeploymentDispatcher;
 use App\Services\Git\GitRepositoryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -203,23 +201,7 @@ new #[Title('Project')] class extends Component {
             return;
         }
 
-        $previousSha = match (true) {
-            $projectServer->last_deployed_sha !== null => $projectServer->last_deployed_sha,
-            $mode === 'incremental' => $projectBranch->created_snapshot_sha,
-            default => null,
-        };
-
-        $deployment = Deployment::create([
-            'project_id' => $this->project->id,
-            'project_server_id' => $projectServer->id,
-            'triggered_by' => Auth::id(),
-            'commit_sha' => $projectBranch->latest_sha,
-            'previous_sha' => $previousSha,
-            'type' => $previousSha === null ? 'full' : 'incremental',
-            'status' => DeploymentStatus::Pending,
-        ]);
-
-        DeployProjectJob::dispatch($deployment->id);
+        app(DeploymentDispatcher::class)->dispatch($projectServer, $projectBranch, $mode, Auth::id());
 
         $this->dispatch('notify', text: __('Deployment started.'));
     }
