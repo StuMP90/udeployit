@@ -11,6 +11,7 @@ use App\Exceptions\DeploymentAbortedException;
 use App\Models\Deployment;
 use App\Models\DeploymentScript;
 use App\Models\Notification;
+use App\Services\Git\FileChange;
 use App\Services\Git\GitDiffService;
 use App\Services\Ssh\SftpDeployerService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -70,10 +71,13 @@ class DeployProjectJob implements ShouldQueue
                     (string) $projectServer->deployment_path,
                     $plan->changes,
                     fn (string $path) => $diffService->content($project, $plan->targetSha, $path),
+                    fn (FileChange $change) => $deployment->log('transfer', "{$change->action} {$change->path}"),
                 );
             }
 
-            $deployment->log('transfer', 'Files uploaded.');
+            $deployment->log('transfer', $plan->deleteCount() > 0
+                ? "Uploaded {$plan->fileCount()} file(s), deleted {$plan->deleteCount()} file(s)."
+                : "Uploaded {$plan->fileCount()} file(s).");
 
             $this->runScriptIfPresent($project->deploymentScripts, DeploymentScriptType::After, $deployment, $deployer, $sftp, 'after');
 

@@ -40,18 +40,20 @@ class SftpDeployerService
     /**
      * @param  array<int, FileChange>  $changes
      */
-    public function applyChanges(SFTP $sftp, string $remotePath, array $changes, Closure $contentResolver): void
+    public function applyChanges(SFTP $sftp, string $remotePath, array $changes, Closure $contentResolver, ?Closure $onChange = null): void
     {
         foreach ($changes as $change) {
             $remote = rtrim($remotePath, '/').'/'.$change->path;
 
             if ($change->action === 'delete') {
                 $sftp->delete($remote);
-
-                continue;
+            } else {
+                $this->putFile($sftp, $remote, $contentResolver($change->path));
             }
 
-            $this->putFile($sftp, $remote, $contentResolver($change->path));
+            if ($onChange) {
+                $onChange($change);
+            }
         }
     }
 

@@ -75,6 +75,61 @@ class DeployProjectJobTest extends TestCase
         $this->assertTrue($deployment->logs()->where('stage', 'finish')->where('message', 'Deployment succeeded.')->exists());
     }
 
+    public function test_an_incremental_deploy_logs_each_file_and_the_totals(): void
+    {
+        $deployment = $this->makeDeployment();
+        $sftp = new SFTP('unused', 22, 1);
+        $changes = [FileChange::put('a.txt'), FileChange::put('b.txt'), FileChange::delete('old.txt')];
+
+        $this->mock(GitDiffService::class, function ($mock) use ($deployment, $changes) {
+            $mock->shouldReceive('plan')->once()->andReturn(DeploymentPlan::incremental($deployment->commit_sha, $changes));
+        });
+
+        $this->mock(SftpDeployerService::class, function ($mock) use ($sftp, $changes) {
+            $mock->shouldReceive('connect')->once()->andReturn($sftp);
+            $mock->shouldReceive('applyChanges')->once()->andReturnUsing(function ($sftp, $path, $given, $resolver, $onChange) use ($changes) {
+                foreach ($changes as $change) {
+                    $onChange($change);
+                }
+            });
+        });
+
+        (new DeployProjectJob($deployment->id))->handle(app(GitDiffService::class), app(SftpDeployerService::class));
+
+        $messages = $deployment->logs()->where('stage', 'transfer')->pluck('message')->all();
+
+        $this->assertContains('put a.txt', $messages);
+        $this->assertContains('put b.txt', $messages);
+        $this->assertContains('delete old.txt', $messages);
+        $this->assertContains('Uploaded 2 file(s), deleted 1 file(s).', $messages);
+    }
+
+    public function test_a_full_deploy_logs_only_the_total(): void
+    {
+        $deployment = $this->makeDeployment();
+        $sftp = new SFTP('unused', 22, 1);
+        $dir = sys_get_temp_dir().'/udeployit-test-full-'.uniqid();
+        mkdir($dir);
+        file_put_contents($dir.'/a.txt', 'a');
+        file_put_contents($dir.'/b.txt', 'b');
+
+        $this->mock(GitDiffService::class, function ($mock) use ($deployment, $dir) {
+            $mock->shouldReceive('plan')->once()->andReturn(DeploymentPlan::full($deployment->commit_sha, $dir));
+        });
+
+        $this->mock(SftpDeployerService::class, function ($mock) use ($sftp) {
+            $mock->shouldReceive('connect')->once()->andReturn($sftp);
+            $mock->shouldReceive('uploadDirectory')->once();
+        });
+
+        (new DeployProjectJob($deployment->id))->handle(app(GitDiffService::class), app(SftpDeployerService::class));
+
+        $messages = $deployment->logs()->where('stage', 'transfer')->pluck('message')->all();
+
+        $this->assertContains('Uploaded 2 file(s).', $messages);
+        $this->assertNotContains('put a.txt', $messages);
+    }
+
     public function test_a_full_deploy_uploads_the_extracted_directory(): void
     {
         $deployment = $this->makeDeployment();

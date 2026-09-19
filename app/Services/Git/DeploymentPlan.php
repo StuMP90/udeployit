@@ -28,6 +28,20 @@ final class DeploymentPlan
         return new self(DeploymentType::Incremental, $targetSha, null, $changes);
     }
 
+    public function fileCount(): int
+    {
+        if ($this->extractedPath === null) {
+            return count(array_filter($this->changes, fn (FileChange $change) => $change->action === 'put'));
+        }
+
+        return is_dir($this->extractedPath) ? count(File::allFiles($this->extractedPath)) : 0;
+    }
+
+    public function deleteCount(): int
+    {
+        return count(array_filter($this->changes, fn (FileChange $change) => $change->action === 'delete'));
+    }
+
     public function cleanup(): void
     {
         if ($this->extractedPath && is_dir($this->extractedPath)) {
