@@ -60,5 +60,6 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-users', fn (User $user) => false);
         Gate::define('manage-infrastructure', fn (User $user) => false);
+        Gate::define('manage-projects', fn (User $user) => false);
     }
 }

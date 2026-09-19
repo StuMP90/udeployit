@@ -19,6 +19,11 @@
                         {{ __('Dashboard') }}
                     </x-ui.navlist-item>
 
+                    <x-ui.navlist-item :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>
+                        <flux:icon.folder-git-2 variant="micro" />
+                        {{ __('Projects') }}
+                    </x-ui.navlist-item>
+
                     @can('manage-users')
                         <x-ui.navlist-item :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
                             <flux:icon.users variant="micro" />
