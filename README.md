@@ -17,11 +17,13 @@ php artisan make:admin   # registration is disabled — this is the only way to 
 
 Serve `public/` with Nginx + PHP-FPM. `storage/` and `bootstrap/cache/` must be writable by the PHP-FPM user.
 
-Run the queue worker (required for deployments once that feature lands):
+Deployments run as queued jobs, so a worker must always be running:
 
 ```bash
-php artisan queue:work
+php artisan queue:work --timeout=3700
 ```
+
+The `--timeout` matters: deploy scripts are capped at 3600s each, `DeployProjectJob` itself times out at 3660s, so the worker's `--timeout` must stay above that (3700s here). `DB_QUEUE_RETRY_AFTER` in `.env` is already set to 3800s for the same reason — Laravel's default (90s) would let the database queue driver treat a still-running deploy as crashed and hand it to another worker, running it twice.
 
 ## License
 

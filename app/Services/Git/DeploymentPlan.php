@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Services\Git;
+
+use App\Enums\DeploymentType;
+use Illuminate\Support\Facades\File;
+
+final class DeploymentPlan
+{
+    private function __construct(
+        public readonly DeploymentType $type,
+        public readonly string $targetSha,
+        public readonly ?string $extractedPath,
+        /** @var array<int, FileChange> */
+        public readonly array $changes,
+    ) {}
+
+    public static function full(string $targetSha, string $extractedPath): self
+    {
+        return new self(DeploymentType::Full, $targetSha, $extractedPath, []);
+    }
+
+    /**
+     * @param  array<int, FileChange>  $changes
+     */
+    public static function incremental(string $targetSha, array $changes): self
+    {
+        return new self(DeploymentType::Incremental, $targetSha, null, $changes);
+    }
+
+    public function cleanup(): void
+    {
+        if ($this->extractedPath && is_dir($this->extractedPath)) {
+            File::deleteDirectory($this->extractedPath);
+        }
+    }
+}

@@ -1,12 +1,19 @@
 <?php
 
+use App\Enums\DeploymentScriptType;
+use App\Enums\DeploymentStatus;
+use App\Enums\ScriptFailureAction;
 use App\Exceptions\GitRepositoryException;
+use App\Jobs\DeployProjectJob;
+use App\Models\Deployment;
 use App\Models\GithubCredential;
 use App\Models\Project;
 use App\Models\ProjectTemplate;
 use App\Models\Server;
 use App\Services\Git\GitRepositoryService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -30,6 +37,12 @@ new #[Title('Project')] class extends Component {
 
     public array $autoDeploy = [];
 
+    public array $scriptCommand = ['before' => '', 'after' => ''];
+
+    public array $scriptTimeout = ['before' => 300, 'after' => 300];
+
+    public array $scriptOnFailure = ['before' => 'abort', 'after' => 'abort'];
+
     public function mount(Project $project): void
     {
         $this->project = $project;
@@ -42,6 +55,12 @@ new #[Title('Project')] class extends Component {
             $this->branch[$projectServer->id] = (string) $projectServer->branch;
             $this->deploymentPath[$projectServer->id] = (string) $projectServer->deployment_path;
             $this->autoDeploy[$projectServer->id] = $projectServer->auto_deploy;
+        }
+
+        foreach ($project->deploymentScripts as $script) {
+            $this->scriptCommand[$script->type->value] = $script->command;
+            $this->scriptTimeout[$script->type->value] = $script->timeout_seconds;
+            $this->scriptOnFailure[$script->type->value] = $script->on_failure->value;
         }
     }
 
@@ -129,6 +148,86 @@ new #[Title('Project')] class extends Component {
         $this->project->projectServers()->findOrFail($projectServerId)->delete();
 
         unset($this->branch[$projectServerId], $this->deploymentPath[$projectServerId], $this->autoDeploy[$projectServerId], $this->project->projectServers);
+    }
+
+    public function saveScript(string $type): void
+    {
+        $type = DeploymentScriptType::from($type);
+
+        $this->validate([
+            "scriptCommand.{$type->value}" => ['required', 'string'],
+            "scriptTimeout.{$type->value}" => ['required', 'integer', 'min:1', 'max:3600'],
+            "scriptOnFailure.{$type->value}" => ['required', Rule::enum(ScriptFailureAction::class)],
+        ]);
+
+        $this->project->deploymentScripts()->updateOrCreate(
+            ['type' => $type],
+            [
+                'command' => $this->scriptCommand[$type->value],
+                'timeout_seconds' => $this->scriptTimeout[$type->value],
+                'on_failure' => $this->scriptOnFailure[$type->value],
+            ],
+        );
+
+        $this->dispatch('notify', text: __(':type script saved.', ['type' => $type->label()]));
+    }
+
+    public function removeScript(string $type): void
+    {
+        $type = DeploymentScriptType::from($type);
+
+        $this->project->deploymentScripts()->where('type', $type)->delete();
+
+        $this->scriptCommand[$type->value] = '';
+        $this->scriptTimeout[$type->value] = 300;
+        $this->scriptOnFailure[$type->value] = 'abort';
+
+        $this->dispatch('notify', text: __(':type script removed.', ['type' => $type->label()]));
+    }
+
+    public function deploy(int $projectServerId, string $mode = 'incremental'): void
+    {
+        $projectServer = $this->project->projectServers()->findOrFail($projectServerId);
+
+        if (blank($projectServer->branch)) {
+            $this->dispatch('notify', text: __('Set a branch for this server before deploying.'), variant: 'danger');
+
+            return;
+        }
+
+        $projectBranch = $this->project->projectBranches()->where('branch_name', $projectServer->branch)->first();
+
+        if (! $projectBranch) {
+            $this->dispatch('notify', text: __('That branch was not found. Try refreshing branches.'), variant: 'danger');
+
+            return;
+        }
+
+        $previousSha = match (true) {
+            $projectServer->last_deployed_sha !== null => $projectServer->last_deployed_sha,
+            $mode === 'incremental' => $projectBranch->created_snapshot_sha,
+            default => null,
+        };
+
+        $deployment = Deployment::create([
+            'project_id' => $this->project->id,
+            'project_server_id' => $projectServer->id,
+            'triggered_by' => Auth::id(),
+            'commit_sha' => $projectBranch->latest_sha,
+            'previous_sha' => $previousSha,
+            'type' => $previousSha === null ? 'full' : 'incremental',
+            'status' => DeploymentStatus::Pending,
+        ]);
+
+        DeployProjectJob::dispatch($deployment->id);
+
+        $this->dispatch('notify', text: __('Deployment started.'));
+    }
+
+    #[Computed]
+    public function recentDeployments()
+    {
+        return $this->project->deployments()->with(['projectServer.server', 'triggeredBy'])->latest()->limit(10)->get();
     }
 
     #[Computed]
@@ -267,7 +366,43 @@ new #[Title('Project')] class extends Component {
                         >
                             {{ __('Remove') }}
                         </button>
+
+                        @if ($projectServer->branch)
+                            @if ($projectServer->last_deployed_sha)
+                                <flux:button
+                                    type="button"
+                                    variant="primary"
+                                    wire:click="deploy({{ $projectServer->id }})"
+                                    wire:confirm="{{ __('Deploy the latest commit on :branch to :server?', ['branch' => $projectServer->branch, 'server' => $projectServer->server->name]) }}"
+                                >
+                                    {{ __('Deploy') }}
+                                </flux:button>
+                            @else
+                                <flux:button
+                                    type="button"
+                                    variant="primary"
+                                    wire:click="deploy({{ $projectServer->id }}, 'full')"
+                                    wire:confirm="{{ __('This is the first deploy to :server. Upload every file?', ['server' => $projectServer->server->name]) }}"
+                                >
+                                    {{ __('Full deploy') }}
+                                </flux:button>
+
+                                <flux:button
+                                    type="button"
+                                    wire:click="deploy({{ $projectServer->id }}, 'incremental')"
+                                    wire:confirm="{{ __('This is the first deploy to :server. Only upload changes since the project was created?', ['server' => $projectServer->server->name]) }}"
+                                >
+                                    {{ __('Incremental from creation') }}
+                                </flux:button>
+                            @endif
+                        @endif
                     </div>
+
+                    @if ($projectServer->last_deployed_sha)
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                            {{ __('Last deployed :time (:sha)', ['time' => $projectServer->last_deployed_at?->diffForHumans(), 'sha' => substr($projectServer->last_deployed_sha, 0, 10)]) }}
+                        </p>
+                    @endif
                 </div>
             @empty
                 <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No servers attached yet.') }}</p>
@@ -294,5 +429,104 @@ new #[Title('Project')] class extends Component {
                 <flux:button type="button" wire:click="addServer">{{ __('Add') }}</flux:button>
             </div>
         @endif
+    </div>
+
+    <div class="border-t border-zinc-200 pt-6 dark:border-zinc-700">
+        <x-ui.heading size="md">{{ __('Deployment scripts') }}</x-ui.heading>
+        <x-ui.subheading class="mb-4">{{ __('Optional shell commands run over SSH on the target server, before and after files are uploaded.') }}</x-ui.subheading>
+
+        <div class="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+            {{ __('These run as a single non-interactive SSH command — chain multiple steps with') }}
+            <code class="rounded bg-zinc-200 px-1 py-0.5 font-mono dark:bg-zinc-800">&amp;&amp;</code>
+            {{ __('(stop on the first failure) or') }}
+            <code class="rounded bg-zinc-200 px-1 py-0.5 font-mono dark:bg-zinc-800">;</code>
+            {{ __('(run every step regardless), e.g.') }}
+            <code class="rounded bg-zinc-200 px-1 py-0.5 font-mono dark:bg-zinc-800">cd /var/www/app &amp;&amp; npm install &amp;&amp; npm run build</code>.
+            {{ __("It won't have a login shell's environment (no sourced .bashrc/.profile) unless your command sources it explicitly.") }}
+        </div>
+
+        <div class="space-y-8">
+            @foreach (\App\Enums\DeploymentScriptType::cases() as $scriptType)
+                <div>
+                    <x-ui.heading size="sm">{{ $scriptType->label() }}</x-ui.heading>
+
+                    <div class="mt-3 space-y-4">
+                        <x-ui.textarea wire:model="scriptCommand.{{ $scriptType->value }}" :label="__('Command')" rows="4" placeholder="cd /var/www/app && npm run build" />
+
+                        <div class="flex items-end gap-4">
+                            <x-ui.input wire:model="scriptTimeout.{{ $scriptType->value }}" :label="__('Timeout (seconds)')" type="number" min="1" max="3600" class="w-40" />
+
+                            <x-ui.select wire:model="scriptOnFailure.{{ $scriptType->value }}" :label="__('If it fails')" class="w-56">
+                                @foreach (\App\Enums\ScriptFailureAction::cases() as $failureAction)
+                                    <option value="{{ $failureAction->value }}">{{ $failureAction->label() }}</option>
+                                @endforeach
+                            </x-ui.select>
+
+                            <flux:button type="button" wire:click="saveScript('{{ $scriptType->value }}')">{{ __('Save') }}</flux:button>
+
+                            @if ($project->deploymentScripts->firstWhere('type', $scriptType))
+                                <button
+                                    type="button"
+                                    wire:click="removeScript('{{ $scriptType->value }}')"
+                                    wire:confirm="{{ __('Remove this script?') }}"
+                                    class="pb-2 text-sm text-red-600 hover:underline dark:text-red-400"
+                                >
+                                    {{ __('Remove') }}
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="border-t border-zinc-200 pt-6 dark:border-zinc-700">
+        <x-ui.heading size="md">{{ __('Recent deployments') }}</x-ui.heading>
+        <x-ui.subheading class="mb-4">{{ __('The last 10 deployments for this project.') }}</x-ui.subheading>
+
+        <div class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <table class="w-full text-start text-sm">
+                <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                    <tr>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('Server') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('Commit') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('Type') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('Status') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('Triggered') }}</th>
+                        <th class="px-4 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                    @forelse ($this->recentDeployments as $deployment)
+                        <tr wire:key="deployment-{{ $deployment->id }}">
+                            <td class="px-4 py-3 font-medium text-zinc-900 dark:text-white">{{ $deployment->projectServer->server->name }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">{{ substr($deployment->commit_sha, 0, 10) }}</td>
+                            <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">{{ ucfirst($deployment->type->value) }}</td>
+                            <td class="px-4 py-3">
+                                <x-ui.badge :color="match ($deployment->status->value) { 'success' => 'green', 'failed' => 'red', default => 'zinc' }">
+                                    {{ $deployment->status->label() }}
+                                </x-ui.badge>
+                            </td>
+                            <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                                {{ $deployment->created_at?->diffForHumans() }}
+                                @if ($deployment->triggeredBy)
+                                    {{ __('by :name', ['name' => $deployment->triggeredBy->name]) }}
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-end">
+                                <x-ui.link href="{{ route('deployments.show', $deployment) }}" wire:navigate>{{ __('View log') }}</x-ui.link>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-4 py-6 text-center text-zinc-500 dark:text-zinc-400">
+                                {{ __('No deployments yet.') }}
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

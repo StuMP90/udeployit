@@ -12,3 +12,4 @@ require __DIR__.'/settings.php';
 require __DIR__.'/users.php';
 require __DIR__.'/infrastructure.php';
 require __DIR__.'/projects.php';
+require __DIR__.'/deployments.php';
