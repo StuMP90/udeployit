@@ -57,13 +57,25 @@ new #[Title('Dashboard')] class extends Component {
     {
         return AppSetting::current()->poll_interval_seconds;
     }
+
+    #[Computed]
+    public function pollInBackground()
+    {
+        return AppSetting::current()->poll_in_background;
+    }
 }; ?>
 
-<div wire:poll.{{ $this->pollIntervalSeconds }}s.visible="poll" class="flex flex-col gap-8">
+<div wire:poll.{{ $this->pollIntervalSeconds }}s.visible{{ $this->pollInBackground ? '.keep-alive' : '' }}="poll" class="flex flex-col gap-8">
     <div class="flex items-center justify-between">
         <div>
             <x-ui.heading size="xl" level="1">{{ __('Dashboard') }}</x-ui.heading>
-            <x-ui.subheading>{{ __('Polling every :seconds seconds while this tab is open.', ['seconds' => $this->pollIntervalSeconds]) }}</x-ui.subheading>
+            <x-ui.subheading>
+                @if ($this->pollInBackground)
+                    {{ __('Polling every :seconds seconds while this tab stays open, even in the background.', ['seconds' => $this->pollIntervalSeconds]) }}
+                @else
+                    {{ __('Polling every :seconds seconds while this tab is open and active.', ['seconds' => $this->pollIntervalSeconds]) }}
+                @endif
+            </x-ui.subheading>
         </div>
 
         <flux:button type="button" wire:click="refreshNow">{{ __('Refresh now') }}</flux:button>

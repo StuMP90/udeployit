@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Notification;
 use App\Models\Project;
 use App\Models\User;
@@ -49,5 +50,22 @@ class DashboardTest extends TestCase
         Livewire::test('pages::dashboard')->call('markAllRead');
 
         $this->assertSame(0, Notification::whereNull('read_at')->count());
+    }
+
+    public function test_polling_pauses_in_the_background_by_default(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::dashboard')
+            ->assertSeeHtml('wire:poll.30s.visible=')
+            ->assertDontSeeHtml('keep-alive');
+    }
+
+    public function test_polling_keeps_alive_when_enabled(): void
+    {
+        $this->actingAs(User::factory()->create());
+        AppSetting::current()->update(['poll_in_background' => true]);
+
+        Livewire::test('pages::dashboard')->assertSeeHtml('wire:poll.30s.visible.keep-alive=');
     }
 }

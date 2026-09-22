@@ -9,18 +9,29 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $poll_interval_seconds
+ * @property bool $poll_in_background
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['poll_interval_seconds'])]
+#[Fillable(['poll_interval_seconds', 'poll_in_background'])]
 class AppSetting extends Model
 {
     public const int DEFAULT_POLL_INTERVAL_SECONDS = 30;
+
+    protected function casts(): array
+    {
+        return [
+            'poll_in_background' => 'boolean',
+        ];
+    }
 
     public static function current(): self
     {
         // firstOrCreate([]) would insert using the DB column default, but the in-memory
         // model wouldn't know that value without an extra round-trip — set it explicitly.
-        return static::query()->firstOrCreate([], ['poll_interval_seconds' => self::DEFAULT_POLL_INTERVAL_SECONDS]);
+        return static::query()->firstOrCreate([], [
+            'poll_interval_seconds' => self::DEFAULT_POLL_INTERVAL_SECONDS,
+            'poll_in_background' => false,
+        ]);
     }
 }

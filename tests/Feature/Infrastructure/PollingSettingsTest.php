@@ -40,4 +40,21 @@ class PollingSettingsTest extends TestCase
             ->call('save')
             ->assertHasErrors(['poll_interval_seconds']);
     }
+
+    public function test_poll_in_background_defaults_to_off(): void
+    {
+        $this->assertFalse(AppSetting::current()->poll_in_background);
+    }
+
+    public function test_admin_can_enable_polling_in_background(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test('pages::polling.edit')
+            ->set('poll_in_background', true)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(AppSetting::current()->poll_in_background);
+    }
 }
