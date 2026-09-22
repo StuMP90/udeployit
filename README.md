@@ -9,7 +9,7 @@ Built with Laravel 13, PHP 8.3, PostgreSQL, and Livewire.
 - Connects to GitHub over SSH (a global default deploy key, with an optional per-project override) and tracks every branch's latest commit.
 - Deploys are **incremental by default**: it diffs the last-deployed commit against the target commit and uploads only what changed, falling back to a full upload when there's no prior deploy or the history isn't reachable (e.g. a force-push).
 - Runs an optional before/after SSH script per project, with a timeout and a configurable abort-or-continue-on-failure policy.
-- Polls GitHub for branch updates **only while a dashboard is open**, at an admin-configurable interval — no webhooks, no cron. If a branch you've marked for auto-deploy updates, it deploys automatically.
+- Polls GitHub for branch updates **only while a dashboard is open**, at an admin-configurable interval — no webhooks, no cron. By default polling pauses when the dashboard tab isn't the active one; an admin-only "poll in background tabs" setting (`/polling`) keeps it running as long as the tab stays open somewhere, active or not. If a branch you've marked for auto-deploy updates, it deploys automatically.
 - Username/password login only — no email-based login, no self-registration, no self-service password reset (an admin creates and resets accounts). Two roles: admin and staff.
 
 See `LICENSE.md` for the license terms — this affects what you're allowed to do with the code.
@@ -64,6 +64,7 @@ sudo systemctl enable --now udeployit-queue
 - Check it's running: `sudo systemctl status udeployit-queue`
 - Tail its output live: `journalctl -u udeployit-queue -f`
 - **Restart it after updating uDeployIt's own code** (not needed for deployments it *performs* — those are just queued jobs picked up by the already-running worker, no restart required): `sudo systemctl restart udeployit-queue`. The worker is a long-running process that keeps the app's code loaded in memory, so pulling a new version of uDeployIt itself won't take effect until it's restarted.
+- If `restart` warns that the unit file "changed on disk" even though you haven't touched it, run `sudo systemctl daemon-reload` first, then `restart` again. This is systemd losing sync with a unit it loaded earlier — it can happen after a system package update touches unrelated units — not a sign your `.service` file is actually wrong.
 
 ## Testing
 
