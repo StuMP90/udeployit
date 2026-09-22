@@ -100,15 +100,23 @@ new #[Title('Dashboard')] class extends Component {
         <div class="flex items-center justify-between">
             <x-ui.heading size="md">{{ __('Notifications') }}</x-ui.heading>
 
-            <button type="button" wire:click="markAllRead" class="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
-                {{ __('Mark all read') }}
-            </button>
+            <div class="flex items-center gap-4">
+                <x-ui.link href="{{ route('notifications.index') }}" wire:navigate class="text-sm">{{ __('View all') }}</x-ui.link>
+
+                <button type="button" wire:click="markAllRead" class="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+                    {{ __('Mark all read') }}
+                </button>
+            </div>
         </div>
 
         <div class="mt-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
             @forelse ($this->notifications as $notification)
                 <div wire:key="notification-{{ $notification->id }}" class="flex items-center justify-between gap-4 px-4 py-3 text-sm {{ $notification->read_at ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white' }}">
-                    <span>{{ $notification->message }}</span>
+                    @if ($notification->deployment_id)
+                        <x-ui.link href="{{ route('deployments.show', $notification->deployment_id) }}" wire:navigate>{{ $notification->message }}</x-ui.link>
+                    @else
+                        <span>{{ $notification->message }}</span>
+                    @endif
                     <span class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ $notification->created_at?->diffForHumans() }}</span>
                 </div>
             @empty

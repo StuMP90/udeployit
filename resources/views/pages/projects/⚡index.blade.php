@@ -35,23 +35,21 @@ new #[Title('Projects')] class extends Component {
                     <th class="px-4 py-3 text-start font-medium">{{ __('Repository') }}</th>
                     <th class="px-4 py-3 text-start font-medium">{{ __('Branches') }}</th>
                     <th class="px-4 py-3 text-start font-medium">{{ __('Servers') }}</th>
-                    <th class="px-4 py-3"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                 @forelse ($this->projects as $project)
                     <tr wire:key="project-{{ $project->id }}">
-                        <td class="px-4 py-3 font-medium text-zinc-900 dark:text-white">{{ $project->name }}</td>
+                        <td class="px-4 py-3 font-medium">
+                            <a href="{{ route('projects.show', $project) }}" wire:navigate class="text-zinc-900 hover:underline dark:text-white">{{ $project->name }}</a>
+                        </td>
                         <td class="px-4 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">{{ $project->repo_url }}</td>
                         <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">{{ $project->project_branches_count }}</td>
                         <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">{{ $project->project_servers_count }}</td>
-                        <td class="px-4 py-3 text-end">
-                            <x-ui.link href="{{ route('projects.show', $project) }}" wire:navigate>{{ __('View') }}</x-ui.link>
-                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-6 text-center text-zinc-500 dark:text-zinc-400">
+                        <td colspan="4" class="px-4 py-6 text-center text-zinc-500 dark:text-zinc-400">
                             {{ __('No projects yet.') }}
                         </td>
                     </tr>

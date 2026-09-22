@@ -23,6 +23,33 @@ class ProjectManagementTest extends TestCase
         $this->get(route('projects.index'))->assertOk();
     }
 
+    public function test_the_project_name_links_to_the_project(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $project = Project::create(['name' => 'My App', 'repo_url' => 'git@github.com:org/repo.git']);
+
+        $this->get(route('projects.index'))->assertSee(route('projects.show', $project), false);
+    }
+
+    public function test_a_user_can_view_the_full_deployment_history(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $project = Project::create(['name' => 'App', 'repo_url' => 'git@github.com:org/repo.git']);
+        $server = Server::create([
+            'name' => 'Prod', 'host' => 'example.com', 'port' => 22, 'auth_type' => 'key',
+            'username' => 'deploy', 'private_key' => 'k',
+        ]);
+        $projectServer = $project->projectServers()->create(['server_id' => $server->id]);
+        $projectServer->deployments()->create([
+            'project_id' => $project->id, 'commit_sha' => str_repeat('a', 40), 'type' => 'full', 'status' => 'success',
+        ]);
+
+        $response = $this->get(route('projects.deployments', $project));
+
+        $response->assertOk();
+        $response->assertSee('Prod');
+    }
+
     public function test_staff_cannot_create_a_project(): void
     {
         $this->actingAs(User::factory()->create());

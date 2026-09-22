@@ -10,4 +10,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('projects.create');
 
     Route::livewire('projects/{project}', 'pages::projects.show')->name('projects.show');
+
+    Route::livewire('projects/{project}/deployments', 'pages::projects.deployments')->name('projects.deployments');
 });

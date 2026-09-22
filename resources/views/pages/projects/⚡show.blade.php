@@ -209,7 +209,7 @@ new #[Title('Project')] class extends Component {
     #[Computed]
     public function recentDeployments()
     {
-        return $this->project->deployments()->with(['projectServer.server', 'triggeredBy'])->latest()->limit(10)->get();
+        return $this->project->deployments()->with(['projectServer.server', 'triggeredBy'])->latest()->limit(20)->get();
     }
 
     #[Computed]
@@ -233,48 +233,50 @@ new #[Title('Project')] class extends Component {
     }
 }; ?>
 
-<div class="max-w-3xl space-y-10">
-    <div>
-        <div class="flex items-center justify-between">
+<div>
+    <div class="grid gap-8 lg:grid-cols-3 lg:items-start">
+        <div class="lg:col-span-2 space-y-10">
             <div>
-                <x-ui.heading size="xl" level="1">{{ $project->name }}</x-ui.heading>
-                <x-ui.subheading class="mb-6">{{ $project->repo_url }}</x-ui.subheading>
+                <div class="flex items-center justify-between">
+                <div>
+                    <x-ui.heading size="xl" level="1">{{ $project->name }}</x-ui.heading>
+                    <x-ui.subheading class="mb-6">{{ $project->repo_url }}</x-ui.subheading>
+                </div>
+
+                @can('manage-projects')
+                    <button
+                        type="button"
+                        wire:click="deleteProject"
+                        wire:confirm="{{ __('Delete this project? This cannot be undone.') }}"
+                        class="text-sm text-red-600 hover:underline dark:text-red-400"
+                    >
+                        {{ __('Delete project') }}
+                    </button>
+                @endcan
             </div>
 
-            @can('manage-projects')
-                <button
-                    type="button"
-                    wire:click="deleteProject"
-                    wire:confirm="{{ __('Delete this project? This cannot be undone.') }}"
-                    class="text-sm text-red-600 hover:underline dark:text-red-400"
-                >
-                    {{ __('Delete project') }}
-                </button>
-            @endcan
+            <form wire:submit="save" class="space-y-6">
+                <x-ui.input wire:model="name" name="name" :label="__('Name')" type="text" required />
+
+                <x-ui.input wire:model="repo_url" name="repo_url" :label="__('Repository (SSH URL)')" type="text" required />
+
+                <x-ui.select wire:model="github_credential_id" name="github_credential_id" :label="__('GitHub credential (optional override)')">
+                    <option value="">{{ __('Use the global default') }}</option>
+                    @foreach ($this->githubCredentials as $credential)
+                        <option value="{{ $credential->id }}">{{ $credential->name }}</option>
+                    @endforeach
+                </x-ui.select>
+
+                <x-ui.select wire:model="project_template_id" name="project_template_id" :label="__('Project template (optional)')">
+                    <option value="">{{ __('None') }}</option>
+                    @foreach ($this->projectTemplates as $template)
+                        <option value="{{ $template->id }}">{{ $template->name }}</option>
+                    @endforeach
+                </x-ui.select>
+
+                <flux:button variant="primary" type="submit">{{ __('Save') }}</flux:button>
+            </form>
         </div>
-
-        <form wire:submit="save" class="space-y-6">
-            <x-ui.input wire:model="name" name="name" :label="__('Name')" type="text" required />
-
-            <x-ui.input wire:model="repo_url" name="repo_url" :label="__('Repository (SSH URL)')" type="text" required />
-
-            <x-ui.select wire:model="github_credential_id" name="github_credential_id" :label="__('GitHub credential (optional override)')">
-                <option value="">{{ __('Use the global default') }}</option>
-                @foreach ($this->githubCredentials as $credential)
-                    <option value="{{ $credential->id }}">{{ $credential->name }}</option>
-                @endforeach
-            </x-ui.select>
-
-            <x-ui.select wire:model="project_template_id" name="project_template_id" :label="__('Project template (optional)')">
-                <option value="">{{ __('None') }}</option>
-                @foreach ($this->projectTemplates as $template)
-                    <option value="{{ $template->id }}">{{ $template->name }}</option>
-                @endforeach
-            </x-ui.select>
-
-            <flux:button variant="primary" type="submit">{{ __('Save') }}</flux:button>
-        </form>
-    </div>
 
     <div class="border-t border-zinc-200 pt-6 dark:border-zinc-700">
         <div class="flex items-center justify-between">
@@ -465,53 +467,32 @@ new #[Title('Project')] class extends Component {
             @endforeach
         </div>
     </div>
+        </div>
 
-    <div class="border-t border-zinc-200 pt-6 dark:border-zinc-700">
-        <x-ui.heading size="md">{{ __('Recent deployments') }}</x-ui.heading>
-        <x-ui.subheading class="mb-4">{{ __('The last 10 deployments for this project.') }}</x-ui.subheading>
+        <div class="lg:sticky lg:top-6">
+            <div class="flex items-center justify-between">
+                <x-ui.heading size="md">{{ __('Recent deployments') }}</x-ui.heading>
+                <x-ui.link href="{{ route('projects.deployments', $project) }}" wire:navigate class="text-sm">{{ __('View all') }}</x-ui.link>
+            </div>
 
-        <div class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
-            <table class="w-full text-start text-sm">
-                <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                    <tr>
-                        <th class="px-4 py-3 text-start font-medium">{{ __('Server') }}</th>
-                        <th class="px-4 py-3 text-start font-medium">{{ __('Commit') }}</th>
-                        <th class="px-4 py-3 text-start font-medium">{{ __('Type') }}</th>
-                        <th class="px-4 py-3 text-start font-medium">{{ __('Status') }}</th>
-                        <th class="px-4 py-3 text-start font-medium">{{ __('Triggered') }}</th>
-                        <th class="px-4 py-3"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($this->recentDeployments as $deployment)
-                        <tr wire:key="deployment-{{ $deployment->id }}">
-                            <td class="px-4 py-3 font-medium text-zinc-900 dark:text-white">{{ $deployment->projectServer->server->name }}</td>
-                            <td class="px-4 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">{{ substr($deployment->commit_sha, 0, 10) }}</td>
-                            <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">{{ ucfirst($deployment->type->value) }}</td>
-                            <td class="px-4 py-3">
-                                <x-ui.badge :color="match ($deployment->status->value) { 'success' => 'green', 'failed' => 'red', default => 'zinc' }">
-                                    {{ $deployment->status->label() }}
-                                </x-ui.badge>
-                            </td>
-                            <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                                {{ $deployment->created_at?->diffForHumans() }}
-                                @if ($deployment->triggeredBy)
-                                    {{ __('by :name', ['name' => $deployment->triggeredBy->name]) }}
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-end">
-                                <x-ui.link href="{{ route('deployments.show', $deployment) }}" wire:navigate>{{ __('View log') }}</x-ui.link>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-6 text-center text-zinc-500 dark:text-zinc-400">
-                                {{ __('No deployments yet.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+            <div class="mt-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                @forelse ($this->recentDeployments as $deployment)
+                    <a href="{{ route('deployments.show', $deployment) }}" wire:navigate wire:key="deployment-{{ $deployment->id }}" class="block px-4 py-3 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-medium text-zinc-900 dark:text-white">{{ $deployment->projectServer->server->name }}</span>
+                            <x-ui.badge :color="match ($deployment->status->value) { 'success' => 'green', 'failed' => 'red', default => 'zinc' }">
+                                {{ $deployment->status->label() }}
+                            </x-ui.badge>
+                        </div>
+                        <div class="mt-1 flex items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            <span class="font-mono">{{ substr($deployment->commit_sha, 0, 10) }}</span>
+                            <span>{{ $deployment->created_at?->diffForHumans() }}</span>
+                        </div>
+                    </a>
+                @empty
+                    <p class="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">{{ __('No deployments yet.') }}</p>
+                @endforelse
+            </div>
         </div>
     </div>
 </div>

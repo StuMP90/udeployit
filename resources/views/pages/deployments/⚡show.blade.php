@@ -24,7 +24,7 @@ new #[Title('Deployment')] class extends Component {
     }
 }; ?>
 
-<div @if (! $this->isFinished()) wire:poll.2s="refresh" @endif class="max-w-3xl space-y-6">
+<div @if (! $this->isFinished()) wire:poll.2s="refresh" @endif class="space-y-6">
     <div>
         <x-ui.link href="{{ route('projects.show', $deployment->project) }}" wire:navigate>&larr; {{ $deployment->project->name }}</x-ui.link>
 
