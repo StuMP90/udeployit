@@ -37,7 +37,7 @@ new #[Title('Notifications')] class extends Component {
         @forelse ($notifications as $notification)
             <div wire:key="notification-{{ $notification->id }}" class="flex items-center justify-between gap-4 px-4 py-3 text-sm {{ $notification->read_at ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-white' }}">
                 @if ($notification->deployment_id)
-                    <x-ui.link href="{{ route('deployments.show', $notification->deployment_id) }}" wire:navigate>{{ $notification->message }}</x-ui.link>
+                    <x-ui.link href="{{ route('deployments.show', $notification->deployment_id) }}" wire:navigate :muted="(bool) $notification->read_at">{{ $notification->message }}</x-ui.link>
                 @else
                     <span>{{ $notification->message }}</span>
                 @endif
