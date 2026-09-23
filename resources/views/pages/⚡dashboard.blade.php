@@ -3,7 +3,6 @@
 use App\Models\AppSetting;
 use App\Models\Notification;
 use App\Models\Project;
-use App\Services\Deployment\BranchPoller;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
@@ -18,15 +17,11 @@ new #[Title('Dashboard')] class extends Component {
 
     public function refreshNow(): void
     {
-        $poller = app(BranchPoller::class);
-
-        foreach (Project::all() as $project) {
-            $poller->forcePoll($project);
-        }
-
-        unset($this->projects, $this->notifications);
-
-        $this->dispatch('notify', text: __('Refreshed.'));
+        // Delegates to the BackgroundPoller component (see its forcePoll()) so a
+        // manual refresh goes through the same browser-notification check as an
+        // ordinary poll tick, instead of duplicating — and silently diverging
+        // from — that logic here.
+        $this->dispatch('request-force-poll');
     }
 
     public function markAllRead(): void

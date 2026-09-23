@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Services\Deployment\BranchPoller;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -28,10 +29,29 @@ class BackgroundPoller extends Component
 
     public function poll(): void
     {
+        $this->pollAllProjects(force: false);
+    }
+
+    /**
+     * Handles the dashboard's "Refresh now" button — routed through here (rather
+     * than the dashboard doing it directly) so a manual refresh goes through the
+     * same browser-notification check as a regular poll tick, instead of silently
+     * skipping it.
+     */
+    #[On('request-force-poll')]
+    public function forcePoll(): void
+    {
+        $this->pollAllProjects(force: true);
+
+        $this->dispatch('notify', text: __('Refreshed.'));
+    }
+
+    private function pollAllProjects(bool $force): void
+    {
         $poller = app(BranchPoller::class);
 
         foreach (Project::all() as $project) {
-            $poller->pollProject($project);
+            $force ? $poller->forcePoll($project) : $poller->pollProject($project);
         }
 
         $this->notifyBrowserOfNewNotifications();

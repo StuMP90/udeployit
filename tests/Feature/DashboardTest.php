@@ -64,4 +64,15 @@ class DashboardTest extends TestCase
 
         $this->assertSame($countBefore + 1, $component->get('projects')->count());
     }
+
+    public function test_refresh_now_delegates_to_the_background_poller(): void
+    {
+        // It must not poll directly itself — that would bypass the background
+        // poller's browser-notification check (see BackgroundPollerTest).
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::dashboard')
+            ->call('refreshNow')
+            ->assertDispatched('request-force-poll');
+    }
 }
