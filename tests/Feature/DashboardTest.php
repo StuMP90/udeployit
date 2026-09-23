@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AppSetting;
 use App\Models\Notification;
 use App\Models\Project;
 use App\Models\User;
@@ -52,20 +51,17 @@ class DashboardTest extends TestCase
         $this->assertSame(0, Notification::whereNull('read_at')->count());
     }
 
-    public function test_polling_pauses_in_the_background_by_default(): void
+    public function test_it_refreshes_its_lists_when_the_background_poller_completes_a_tick(): void
     {
         $this->actingAs(User::factory()->create());
+        Project::create(['name' => 'My App', 'repo_url' => 'git@github.com:org/repo.git']);
 
-        Livewire::test('pages::dashboard')
-            ->assertSeeHtml('wire:poll.30s.visible=')
-            ->assertDontSeeHtml('keep-alive');
-    }
+        $component = Livewire::test('pages::dashboard');
+        $countBefore = $component->get('projects')->count();
 
-    public function test_polling_keeps_alive_when_enabled(): void
-    {
-        $this->actingAs(User::factory()->create());
-        AppSetting::current()->update(['poll_in_background' => true]);
+        Project::create(['name' => 'Another App', 'repo_url' => 'git@github.com:org/other.git']);
+        $component->dispatch('background-poll-completed');
 
-        Livewire::test('pages::dashboard')->assertSeeHtml('wire:poll.30s.visible.keep-alive=');
+        $this->assertSame($countBefore + 1, $component->get('projects')->count());
     }
 }

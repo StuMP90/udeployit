@@ -9,7 +9,8 @@ Built with Laravel 13, PHP 8.3, PostgreSQL, and Livewire.
 - Connects to GitHub over SSH (a global default deploy key, with an optional per-project override) and tracks every branch's latest commit.
 - Deploys are **incremental by default**: it diffs the last-deployed commit against the target commit and uploads only what changed, falling back to a full upload when there's no prior deploy or the history isn't reachable (e.g. a force-push).
 - Runs an optional before/after SSH script per project, with a timeout and a configurable abort-or-continue-on-failure policy.
-- Polls GitHub for branch updates **only while a dashboard is open**, at an admin-configurable interval — no webhooks, no cron. By default polling pauses when the dashboard tab isn't the active one; an admin-only "poll in background tabs" setting (`/polling`) keeps it running as long as the tab stays open somewhere, active or not. If a branch you've marked for auto-deploy updates, it deploys automatically.
+- Polls GitHub for branch updates **only while a browser tab with the site is open** — any page, not just the dashboard — at an admin-configurable interval, no webhooks, no cron. By default polling pauses when that tab isn't the active one; an admin-only "poll in background tabs" setting (`/polling`) keeps it running as long as the tab stays open somewhere, active or not. If a branch you've marked for auto-deploy updates, it deploys automatically.
+- Optional browser notifications (`/polling`) pop up an OS-level notification for new branch updates and deployment results, subject to the same "a tab must stay open" rule as polling itself, plus one-time browser permission per device.
 - Username/password login only — no email-based login, no self-registration, no self-service password reset (an admin creates and resets accounts). Two roles: admin and staff.
 
 See `LICENSE.md` for the license terms — this affects what you're allowed to do with the code.

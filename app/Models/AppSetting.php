@@ -10,10 +10,11 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $poll_interval_seconds
  * @property bool $poll_in_background
+ * @property bool $browser_notifications
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['poll_interval_seconds', 'poll_in_background'])]
+#[Fillable(['poll_interval_seconds', 'poll_in_background', 'browser_notifications'])]
 class AppSetting extends Model
 {
     public const int DEFAULT_POLL_INTERVAL_SECONDS = 30;
@@ -22,6 +23,7 @@ class AppSetting extends Model
     {
         return [
             'poll_in_background' => 'boolean',
+            'browser_notifications' => 'boolean',
         ];
     }
 
@@ -32,6 +34,7 @@ class AppSetting extends Model
         return static::query()->firstOrCreate([], [
             'poll_interval_seconds' => self::DEFAULT_POLL_INTERVAL_SECONDS,
             'poll_in_background' => false,
+            'browser_notifications' => false,
         ]);
     }
 }

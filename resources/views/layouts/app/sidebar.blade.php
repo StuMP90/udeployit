@@ -85,6 +85,10 @@
 
         <x-ui.toast />
 
+        @persist('background-poller')
+            <livewire:background-poller />
+        @endpersist
+
         @fluxScripts
     </body>
 </html>

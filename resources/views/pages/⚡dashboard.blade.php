@@ -5,18 +5,14 @@ use App\Models\Notification;
 use App\Models\Project;
 use App\Services\Deployment\BranchPoller;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Dashboard')] class extends Component {
-    public function poll(): void
+    #[On('background-poll-completed')]
+    public function refreshFromBackgroundPoll(): void
     {
-        $poller = app(BranchPoller::class);
-
-        foreach (Project::all() as $project) {
-            $poller->pollProject($project);
-        }
-
         unset($this->projects, $this->notifications);
     }
 
@@ -65,15 +61,15 @@ new #[Title('Dashboard')] class extends Component {
     }
 }; ?>
 
-<div wire:poll.{{ $this->pollIntervalSeconds }}s.visible{{ $this->pollInBackground ? '.keep-alive' : '' }}="poll" class="flex flex-col gap-8">
+<div class="flex flex-col gap-8">
     <div class="flex items-center justify-between">
         <div>
             <x-ui.heading size="xl" level="1">{{ __('Dashboard') }}</x-ui.heading>
             <x-ui.subheading>
                 @if ($this->pollInBackground)
-                    {{ __('Polling every :seconds seconds while this tab stays open, even in the background.', ['seconds' => $this->pollIntervalSeconds]) }}
+                    {{ __('Polling every :seconds seconds as long as a tab with the site stays open somewhere, even in the background.', ['seconds' => $this->pollIntervalSeconds]) }}
                 @else
-                    {{ __('Polling every :seconds seconds while this tab is open and active.', ['seconds' => $this->pollIntervalSeconds]) }}
+                    {{ __('Polling every :seconds seconds as long as a tab with the site is open and active — on any page, not just this one.', ['seconds' => $this->pollIntervalSeconds]) }}
                 @endif
             </x-ui.subheading>
         </div>

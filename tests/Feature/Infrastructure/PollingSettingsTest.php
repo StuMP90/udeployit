@@ -57,4 +57,21 @@ class PollingSettingsTest extends TestCase
 
         $this->assertTrue(AppSetting::current()->poll_in_background);
     }
+
+    public function test_browser_notifications_defaults_to_off(): void
+    {
+        $this->assertFalse(AppSetting::current()->browser_notifications);
+    }
+
+    public function test_admin_can_enable_browser_notifications(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test('pages::polling.edit')
+            ->set('browser_notifications', true)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(AppSetting::current()->browser_notifications);
+    }
 }
