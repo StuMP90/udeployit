@@ -40,6 +40,19 @@ class BackgroundPollerTest extends TestCase
         $response->assertSeeHtml('wire:poll.30s.visible=');
     }
 
+    public function test_it_is_not_display_none(): void
+    {
+        // wire:poll's .visible modifier gates on getBoundingClientRect(), which is
+        // always zero for a display:none element — that would silently stop this
+        // component from ever polling, on every page, forever. Must stay merely
+        // visually hidden (e.g. sr-only), not display:none (e.g. Tailwind's `hidden`).
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test(BackgroundPoller::class)
+            ->assertDontSeeHtml('class="hidden"')
+            ->assertSeeHtml('sr-only');
+    }
+
     public function test_a_tick_dispatches_a_completion_event(): void
     {
         $this->actingAs(User::factory()->create());

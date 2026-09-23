@@ -1,6 +1,6 @@
 <div
     wire:poll.{{ $this->pollIntervalSeconds }}s.visible{{ $this->pollInBackground ? '.keep-alive' : '' }}="poll"
-    class="hidden"
+    class="sr-only"
     data-browser-notifications="{{ $this->browserNotificationsEnabled ? '1' : '0' }}"
 >
     @script
